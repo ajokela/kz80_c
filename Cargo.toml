@@ -1,0 +1,13 @@
+[package]
+name = "kz80_c"
+version = "0.1.0"
+edition = "2021"
+description = "A self-hosting C compiler for RetroShield Z80"
+license = "BSD-3-Clause"
+authors = ["Alex Jokela"]
+
+[dependencies]
+
+[[bin]]
+name = "kz80_c"
+path = "src/main.rs"
