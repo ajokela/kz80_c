@@ -111,7 +111,12 @@ impl Parser {
         if !self.check(&Token::RParen) {
             loop {
                 let ty = self.parse_type()?;
-                let pname = self.parse_ident()?;
+                // Parameter name is optional for prototypes
+                let pname = if self.check(&Token::Comma) || self.check(&Token::RParen) {
+                    String::new()
+                } else {
+                    self.parse_ident()?
+                };
                 params.push(Param { ty, name: pname });
                 if !self.check(&Token::Comma) {
                     break;
@@ -120,6 +125,19 @@ impl Parser {
             }
         }
         self.expect(Token::RParen)?;
+
+        // Check for prototype (ends with semicolon) vs definition (has body)
+        if self.check(&Token::Semicolon) {
+            self.advance();
+            // For prototypes, we still create a function but with empty body
+            // The codegen will handle forward references
+            return Ok(Decl::Function(Function {
+                return_type,
+                name,
+                params,
+                body: Vec::new(),
+            }));
+        }
 
         // Parse body
         let body = self.parse_block()?;
@@ -133,6 +151,19 @@ impl Parser {
     }
 
     fn parse_global(&mut self, ty: Type, name: String) -> Result<Decl> {
+        // Check for array declaration: type name[size]
+        let ty = if self.check(&Token::LBracket) {
+            self.advance();
+            let size = match self.advance() {
+                Token::IntLit(n) => n as usize,
+                _ => return Err(ParseError::new("Expected array size")),
+            };
+            self.expect(Token::RBracket)?;
+            Type::Array(Box::new(ty), size)
+        } else {
+            ty
+        };
+
         let init = if self.check(&Token::Eq) {
             self.advance();
             Some(self.parse_expr()?)
@@ -148,6 +179,7 @@ impl Parser {
             Token::Void => { self.advance(); Type::Void }
             Token::Char => { self.advance(); Type::Char }
             Token::Int => { self.advance(); Type::Int }
+            Token::Float => { self.advance(); Type::Float }
             Token::Struct => {
                 self.advance();
                 let name = self.parse_ident()?;
@@ -602,6 +634,10 @@ impl Parser {
                 self.advance();
                 Ok(Expr::IntLit(n))
             }
+            Token::FloatLit(s) => {
+                self.advance();
+                Ok(Expr::FloatLit(s))
+            }
             Token::CharLit(c) => {
                 self.advance();
                 Ok(Expr::CharLit(c))
@@ -662,5 +698,18 @@ mod tests {
         "#;
         let ast = parse(code).unwrap();
         assert_eq!(ast.decls.len(), 1);
+    }
+
+    #[test]
+    fn test_float_decl() {
+        let code = r#"
+            float pi = 3.14;
+            float compute(float x) {
+                float y = x + 1.0;
+                return y;
+            }
+        "#;
+        let ast = parse(code).unwrap();
+        assert_eq!(ast.decls.len(), 2);
     }
 }

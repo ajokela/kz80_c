@@ -4,6 +4,7 @@
 pub enum Token {
     // Literals
     IntLit(i32),
+    FloatLit(String),  // Store as string to preserve exact representation
     CharLit(u8),
     StringLit(String),
     Ident(String),
@@ -20,6 +21,7 @@ pub enum Token {
     Int,
     Char,
     Void,
+    Float,
     Struct,
     Sizeof,
 
@@ -78,6 +80,6 @@ pub enum Token {
 impl Token {
     /// Check if this token is a type specifier
     pub fn is_type(&self) -> bool {
-        matches!(self, Token::Int | Token::Char | Token::Void | Token::Struct)
+        matches!(self, Token::Int | Token::Char | Token::Void | Token::Float | Token::Struct)
     }
 }

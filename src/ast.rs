@@ -6,6 +6,7 @@ pub enum Type {
     Void,
     Char,                      // 8-bit
     Int,                       // 16-bit
+    Float,                     // 6-byte BCD float
     Pointer(Box<Type>),        // pointer to type
     Array(Box<Type>, usize),   // array of type with size
     Struct(String),            // named struct
@@ -18,10 +19,16 @@ impl Type {
             Type::Void => 0,
             Type::Char => 1,
             Type::Int => 2,
+            Type::Float => 6,       // 6-byte BCD float
             Type::Pointer(_) => 2,  // 16-bit pointers on Z80
             Type::Array(inner, count) => inner.size() * count,
             Type::Struct(_) => 0,   // Need to look up in symbol table
         }
+    }
+
+    /// Is this a float type?
+    pub fn is_float(&self) -> bool {
+        matches!(self, Type::Float)
     }
 
     /// Is this a pointer type?
@@ -62,6 +69,8 @@ pub enum UnOp {
 pub enum Expr {
     /// Integer literal
     IntLit(i32),
+    /// Float literal (stored as string to preserve exact representation)
+    FloatLit(String),
     /// Character literal
     CharLit(u8),
     /// String literal (stored as label reference)

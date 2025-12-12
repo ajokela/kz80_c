@@ -77,13 +77,13 @@ impl<'a> Lexer<'a> {
     }
 
     fn read_number(&mut self) -> Result<Token, LexError> {
-        let mut value: i32 = 0;
-        let start_col = self.col;
+        let start = self.pos;
 
         // Check for hex
         if self.peek() == Some(b'0') && matches!(self.peek_next(), Some(b'x') | Some(b'X')) {
             self.advance(); // 0
             self.advance(); // x
+            let mut value: i32 = 0;
             while let Some(ch) = self.peek() {
                 if ch.is_ascii_hexdigit() {
                     let digit = if ch.is_ascii_digit() {
@@ -97,15 +97,74 @@ impl<'a> Lexer<'a> {
                     break;
                 }
             }
-        } else {
+            return Ok(Token::IntLit(value));
+        }
+
+        // Read integer part
+        let mut value: i32 = 0;
+        while let Some(ch) = self.peek() {
+            if ch.is_ascii_digit() {
+                value = value * 10 + (ch - b'0') as i32;
+                self.advance();
+            } else {
+                break;
+            }
+        }
+
+        // Check for decimal point (not followed by another dot, which would be range syntax)
+        let is_float = self.peek() == Some(b'.') && self.peek_next().map_or(false, |c| c.is_ascii_digit());
+
+        if is_float {
+            // This is a float literal
+            self.advance(); // consume '.'
+
+            // Read fractional part
             while let Some(ch) = self.peek() {
                 if ch.is_ascii_digit() {
-                    value = value * 10 + (ch - b'0') as i32;
                     self.advance();
                 } else {
                     break;
                 }
             }
+
+            // Check for exponent
+            if matches!(self.peek(), Some(b'e') | Some(b'E')) {
+                self.advance(); // consume 'e'
+                // Optional sign
+                if matches!(self.peek(), Some(b'+') | Some(b'-')) {
+                    self.advance();
+                }
+                // Exponent digits
+                while let Some(ch) = self.peek() {
+                    if ch.is_ascii_digit() {
+                        self.advance();
+                    } else {
+                        break;
+                    }
+                }
+            }
+
+            let float_str = String::from_utf8_lossy(&self.input[start..self.pos]).to_string();
+            return Ok(Token::FloatLit(float_str));
+        }
+
+        // Check for exponent without decimal point (e.g., 1e5)
+        if matches!(self.peek(), Some(b'e') | Some(b'E')) {
+            self.advance(); // consume 'e'
+            // Optional sign
+            if matches!(self.peek(), Some(b'+') | Some(b'-')) {
+                self.advance();
+            }
+            // Exponent digits
+            while let Some(ch) = self.peek() {
+                if ch.is_ascii_digit() {
+                    self.advance();
+                } else {
+                    break;
+                }
+            }
+            let float_str = String::from_utf8_lossy(&self.input[start..self.pos]).to_string();
+            return Ok(Token::FloatLit(float_str));
         }
 
         Ok(Token::IntLit(value))
@@ -135,6 +194,7 @@ impl<'a> Lexer<'a> {
             "int" => Token::Int,
             "char" => Token::Char,
             "void" => Token::Void,
+            "float" => Token::Float,
             "struct" => Token::Struct,
             "sizeof" => Token::Sizeof,
             _ => Token::Ident(name),
@@ -364,6 +424,34 @@ mod tests {
         assert_eq!(tokens, vec![
             Token::IntLit(0x1F),
             Token::IntLit(0xFF00),
+            Token::Eof,
+        ]);
+    }
+
+    #[test]
+    fn test_float_literals() {
+        let mut lexer = Lexer::new("3.14 1.0 0.5 1e5 2.5e-3");
+        let tokens = lexer.tokenize().unwrap();
+        assert_eq!(tokens, vec![
+            Token::FloatLit("3.14".to_string()),
+            Token::FloatLit("1.0".to_string()),
+            Token::FloatLit("0.5".to_string()),
+            Token::FloatLit("1e5".to_string()),
+            Token::FloatLit("2.5e-3".to_string()),
+            Token::Eof,
+        ]);
+    }
+
+    #[test]
+    fn test_float_keyword() {
+        let mut lexer = Lexer::new("float x = 3.14;");
+        let tokens = lexer.tokenize().unwrap();
+        assert_eq!(tokens, vec![
+            Token::Float,
+            Token::Ident("x".to_string()),
+            Token::Eq,
+            Token::FloatLit("3.14".to_string()),
+            Token::Semicolon,
             Token::Eof,
         ]);
     }
