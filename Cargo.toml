@@ -2,9 +2,15 @@
 name = "kz80_c"
 version = "0.1.0"
 edition = "2021"
-description = "A self-hosting C compiler for RetroShield Z80"
+description = "A self-hosting C compiler for Z80 targeting RetroShield hardware"
 license = "BSD-3-Clause"
 authors = ["Alex Jokela"]
+repository = "https://github.com/ajokela/kz80_c"
+homepage = "https://github.com/ajokela/kz80_c"
+documentation = "https://github.com/ajokela/kz80_c#readme"
+readme = "README.md"
+keywords = ["z80", "compiler", "c", "retro", "embedded"]
+categories = ["compilers", "development-tools", "embedded"]
 
 [dependencies]
 
