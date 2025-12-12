@@ -1,6 +1,6 @@
 [package]
 name = "kz80_c"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "A self-hosting C compiler for Z80 targeting RetroShield hardware"
 license = "BSD-3-Clause"
